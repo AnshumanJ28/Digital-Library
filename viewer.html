@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}{{ display_name }} - Viewer{% endblock %}
+
+{% block content %}
+<div class="mb-3 d-flex align-items-center justify-content-between">
+    <a href="{{ url_for('books', class_id=class_id, subject_id=subject_id) }}" class="btn-back btn-sm" aria-label="Back to Books">
+        <i class="bi bi-arrow-left me-1"></i>Back to Books
+    </a>
+    <div class="text-end">
+        <a href="{{ url_for('serve_pdf', class_id=class_id, subject_id=subject_id, subpath=subpath) }}" target="_blank" class="btn-outline-pill px-3 py-1.5 fs-7 d-inline-flex align-items-center" style="min-height: 38px; padding-top: 0.25rem !important; padding-bottom: 0.25rem !important;">
+            <i class="bi bi-box-arrow-up-right me-1"></i>Open Full
+        </a>
+    </div>
+</div>
+
+<div class="mb-3 overflow-hidden">
+    <h1 class="h4 text-dark mb-1 text-truncate">{{ display_name }}</h1>
+    <p class="text-muted small mb-0">{{ class_name }} &bull; {{ subject_name }}</p>
+</div>
+
+<div class="viewer-wrapper">
+    <div class="position-relative w-100 rounded overflow-hidden" style="height: 78vh; min-height: 500px; background-color: #E5E7EB;">
+        <iframe 
+            src="{{ url_for('serve_pdf', class_id=class_id, subject_id=subject_id, subpath=subpath) }}#toolbar=1" 
+            class="w-100 h-100 border-0"
+            title="PDF Viewer"
+            allow="fullscreen"
+        >
+            <div class="p-5 text-center text-dark">
+                <i class="bi bi-exclamation-circle text-muted fs-1 mb-3"></i>
+                <h3>Cannot Display PDF Inline</h3>
+                <a href="{{ url_for('serve_pdf', class_id=class_id, subject_id=subject_id, subpath=subpath) }}" class="btn-primary-pill mt-3">Open PDF Directly</a>
+            </div>
+        </iframe>
+    </div>
+</div>
+{% endblock %}

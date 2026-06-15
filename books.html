@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}{{ class_name }} {{ subject_name }} - Books{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('subjects', class_id=class_id) }}">{{ class_name }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ subject_name }}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row align-items-center mb-4">
+    <div class="col-12 col-md-7 mb-3 mb-md-0">
+        <h1 class="h2 mb-1">{{ subject_name }} Textbooks</h1>
+        <p class="text-muted">{{ class_name }} &bull; Select a book to start reading</p>
+    </div>
+    {% if books %}
+    <div class="col-12 col-md-5">
+        <div class="search-container">
+            <span class="ps-3 d-flex align-items-center"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" id="searchBar" class="form-control search-input" placeholder="Search books by name...">
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="divider"></div>
+
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+
+        {% if books %}
+            {# Check if any book has a group/subfolder #}
+            {% set has_groups = books | selectattr('group') | list | length > 0 %}
+
+            {% if has_groups %}
+                {# Group books by subfolder #}
+                {% set seen_groups = [] %}
+                {% for book in books %}
+                    {% if book.group and book.group not in seen_groups %}
+                        {% if seen_groups.append(book.group) %}{% endif %}
+                    {% endif %}
+                {% endfor %}
+
+                {# Ungrouped books first (flat PDFs at root level) #}
+                {% set flat_books = books | rejectattr('group') | list %}
+                {% if flat_books %}
+                <div class="d-flex flex-column gap-3 mb-4" id="booksGrid">
+                    {% for book in flat_books %}
+                    <div class="card-library book-card-col" data-title="{{ book.filename }}">
+                        <div class="d-flex flex-column">
+                            <div class="d-flex align-items-start justify-content-between mb-3">
+                                <span class="badge-subject badge-{{ subject_id }}">
+                                    {% if subject_id == 'maths' %}Maths{% elif subject_id == 'science' %}Science{% else %}Social Science{% endif %}
+                                </span>
+                                <i class="bi bi-file-earmark-pdf text-muted fs-4"></i>
+                            </div>
+                            <h2 class="h5 mb-1 text-dark">{{ book.display_name }}</h2>
+                            <p class="text-muted small mb-3">{{ book.filename }}</p>
+                            <a href="{{ url_for('viewer', class_id=class_id, subject_id=subject_id, subpath=book.subpath) }}" class="btn-primary-pill text-center w-100">
+                                <i class="bi bi-book me-2"></i>Read Book
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {# Grouped books by subfolder #}
+                <div id="booksGrid">
+                {% for group in seen_groups %}
+                    {% set group_books = books | selectattr('group', 'equalto', group) | list %}
+                    <div class="mb-4">
+                        <h2 class="h5 fw-semibold text-dark mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-folder2-open text-primary"></i>
+                            {{ group }}
+                        </h2>
+                        <div class="d-flex flex-column gap-3">
+                        {% for book in group_books %}
+                        <div class="card-library book-card-col" data-title="{{ book.filename }}">
+                            <div class="d-flex flex-column">
+                                <div class="d-flex align-items-start justify-content-between mb-3">
+                                    <span class="badge-subject badge-{{ subject_id }}">
+                                        {{ group }}
+                                    </span>
+                                    <i class="bi bi-file-earmark-pdf text-muted fs-4"></i>
+                                </div>
+                                <h2 class="h5 mb-1 text-dark">{{ book.display_name }}</h2>
+                                <p class="text-muted small mb-3">{{ book.filename }}</p>
+                                <a href="{{ url_for('viewer', class_id=class_id, subject_id=subject_id, subpath=book.subpath) }}" class="btn-primary-pill text-center w-100">
+                                    <i class="bi bi-book me-2"></i>Read Book
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+
+            {% else %}
+                {# No sub-folders — flat list (original behavior) #}
+                <div class="d-flex flex-column gap-3" id="booksGrid">
+                    {% for book in books %}
+                    <div class="card-library book-card-col" data-title="{{ book.filename }}">
+                        <div class="d-flex flex-column">
+                            <div class="d-flex align-items-start justify-content-between mb-3">
+                                <span class="badge-subject badge-{{ subject_id }}">
+                                    {% if subject_id == 'maths' %}Maths{% elif subject_id == 'science' %}Science{% else %}Social Science{% endif %}
+                                </span>
+                                <i class="bi bi-file-earmark-pdf text-muted fs-4"></i>
+                            </div>
+                            <h2 class="h5 mb-1 text-dark">{{ book.display_name }}</h2>
+                            <p class="text-muted small mb-3">{{ book.filename }}</p>
+                            <a href="{{ url_for('viewer', class_id=class_id, subject_id=subject_id, subpath=book.subpath) }}" class="btn-primary-pill text-center w-100">
+                                <i class="bi bi-book me-2"></i>Read Book
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+        {% else %}
+            <div class="card-library text-center p-5">
+                <div class="mb-3 fs-1 text-muted">
+                    <i class="bi bi-folder-x"></i>
+                </div>
+                <h3 class="h5 mb-2">No Books Found</h3>
+                <p class="text-muted small mb-4">No textbook PDF files have been uploaded yet.</p>
+                <div class="text-start p-3 bg-light rounded border">
+                    <p class="small text-dark fw-bold mb-1"><i class="bi bi-info-circle-fill me-1"></i>How to add textbooks:</p>
+                    <p class="small text-muted mb-2">Copy your PDF files into the directory:</p>
+                    <code class="d-block p-2 rounded bg-white border text-dark font-monospace small text-break">
+                        pdfs/{{ class_id }}/{{ subject_id }}/
+                    </code>
+                </div>
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchBar = document.getElementById('searchBar');
+        if (searchBar) {
+            searchBar.addEventListener('input', function(e) {
+                const query = e.target.value.toLowerCase().trim();
+                const cards = document.querySelectorAll('.book-card-col');
+                cards.forEach(card => {
+                    const title = card.getAttribute('data-title').toLowerCase();
+                    const cleanTitle = card.querySelector('h2').textContent.toLowerCase();
+                    if (title.includes(query) || cleanTitle.includes(query)) {
+                        card.style.setProperty('display', 'block', 'important');
+                    } else {
+                        card.style.setProperty('display', 'none', 'important');
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}
