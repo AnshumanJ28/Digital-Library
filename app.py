@@ -35,10 +35,36 @@ SOCIAL_SUBFOLDERS = {
 }
 
 
-def get_cloudinary_url(public_id):
-    """Build a direct raw file URL from public_id."""
+def get_cloudinary_url(public_id, resource_type="raw"):
+    """Build a direct file URL from public_id."""
     cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "dr3tph8sg")
-    return f"https://res.cloudinary.com/{cloud_name}/raw/upload/{public_id}"
+    return f"https://res.cloudinary.com/{cloud_name}/{resource_type}/upload/{public_id}"
+
+
+def fetch_from_cloudinary(folder_path):
+    """
+    Try fetching PDFs from a folder, checking both 'raw' and 'image' resource types.
+    Returns list of dicts with resource info.
+    """
+    resources = []
+    for resource_type in ["raw", "image"]:
+        try:
+            result = cloudinary.api.resources(
+                type="upload",
+                resource_type=resource_type,
+                prefix=folder_path + "/",
+                max_results=100
+            )
+            found = result.get('resources', [])
+            if found:
+                print(f"Found {len(found)} files in {folder_path} as resource_type={resource_type}")
+                for r in found:
+                    r['_resource_type'] = resource_type
+                resources.extend(found)
+                break  # found with this type, no need to try the other
+        except Exception as e:
+            print(f"Cloudinary error [{resource_type}] for {folder_path}: {e}")
+    return resources
 
 
 @lru_cache(maxsize=64)
@@ -54,55 +80,37 @@ def fetch_books(class_id, subject_id):
     subfolders = SOCIAL_SUBFOLDERS.get(class_id, []) if subject_id == 'social' else []
 
     if subfolders:
-        # Fetch from each subfolder
         for subfolder in subfolders:
             folder_path = f"{base_folder}/{subfolder}"
-            try:
-                result = cloudinary.api.resources(
-                    type="upload",
-                    resource_type="raw",
-                    prefix=folder_path + "/",
-                    max_results=100
-                )
-                for r in result.get('resources', []):
-                    public_id = r['public_id']
-                    filename = public_id.split('/')[-1]
-                    if not filename.lower().endswith('.pdf'):
-                        continue
-                    display_name = filename[:-4].replace('_', ' ').replace('-', ' ').title()
-                    books.append({
-                        'display_name': display_name,
-                        'filename': filename,
-                        'public_id': public_id,
-                        'url': get_cloudinary_url(public_id),
-                        'group': subfolder
-                    })
-            except Exception as e:
-                print(f"Cloudinary error for {folder_path}: {e}")
-    else:
-        # Flat folder
-        try:
-            result = cloudinary.api.resources(
-                type="upload",
-                resource_type="raw",
-                prefix=base_folder + "/",
-                max_results=100
-            )
-            for r in result.get('resources', []):
+            for r in fetch_from_cloudinary(folder_path):
                 public_id = r['public_id']
                 filename = public_id.split('/')[-1]
                 if not filename.lower().endswith('.pdf'):
                     continue
+                resource_type = r.get('_resource_type', 'raw')
                 display_name = filename[:-4].replace('_', ' ').replace('-', ' ').title()
                 books.append({
                     'display_name': display_name,
                     'filename': filename,
                     'public_id': public_id,
-                    'url': get_cloudinary_url(public_id),
-                    'group': None
+                    'url': get_cloudinary_url(public_id, resource_type),
+                    'group': subfolder
                 })
-        except Exception as e:
-            print(f"Cloudinary error for {base_folder}: {e}")
+    else:
+        for r in fetch_from_cloudinary(base_folder):
+            public_id = r['public_id']
+            filename = public_id.split('/')[-1]
+            if not filename.lower().endswith('.pdf'):
+                continue
+            resource_type = r.get('_resource_type', 'raw')
+            display_name = filename[:-4].replace('_', ' ').replace('-', ' ').title()
+            books.append({
+                'display_name': display_name,
+                'filename': filename,
+                'public_id': public_id,
+                'url': get_cloudinary_url(public_id, resource_type),
+                'group': None
+            })
 
     # Sort: by group then filename
     books.sort(key=lambda x: (x['group'] or '', x['filename']))
