@@ -177,3 +177,30 @@ def viewer(class_id, subject_id, public_id_suffix):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+
+@app.route('/debug')
+def debug():
+    """Temporary debug route — shows raw Cloudinary API response."""
+    output = []
+    for resource_type in ["raw", "image"]:
+        try:
+            result = cloudinary.api.resources(
+                type="upload",
+                resource_type=resource_type,
+                prefix="pdfs/",
+                max_results=10
+            )
+            resources = result.get('resources', [])
+            output.append(f"<b>resource_type={resource_type}:</b> found {len(resources)} items<br>")
+            for r in resources:
+                output.append(f"&nbsp;&nbsp;→ {r['public_id']} | format: {r.get('format')} | type: {r.get('resource_type')}<br>")
+        except Exception as e:
+            output.append(f"<b>resource_type={resource_type} ERROR:</b> {e}<br>")
+
+    cloud = os.environ.get("CLOUDINARY_CLOUD_NAME", "NOT SET")
+    key = "SET" if os.environ.get("CLOUDINARY_API_KEY") else "NOT SET"
+    secret = "SET" if os.environ.get("CLOUDINARY_API_SECRET") else "NOT SET"
+    output.insert(0, f"<b>Cloud:</b> {cloud} | <b>API Key:</b> {key} | <b>Secret:</b> {secret}<br><br>")
+
+    return "".join(output)
