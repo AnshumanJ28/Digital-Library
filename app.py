@@ -5,7 +5,7 @@ from functools import lru_cache
 
 app = Flask(__name__)
 
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+GOOGLE_API_KEY = os.environ.get("AIzaSyD88vUvjtLnF5kBpzqaiOclMExx2YRrKE8")
 
 CLASSES = ['class9', 'class10']
 SUBJECTS = ['maths', 'science', 'social']
