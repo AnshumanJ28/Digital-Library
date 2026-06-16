@@ -1,8 +1,9 @@
 import os
 import cloudinary
 import cloudinary.api
-from flask import Flask, render_template, abort
+from flask import Flask, render_template, abort, redirect
 from functools import lru_cache
+import urllib.parse
 
 app = Flask(__name__)
 
@@ -23,13 +24,19 @@ SOCIAL_SUBFOLDERS = {
 }
 
 
-def get_pdf_url(public_id):
+def build_pdf_url(public_id, asset_folder):
+    """
+    In Cloudinary's new ML folder mode:
+    - public_id is just the filename (e.g. Chapter_8_wkkxv4)
+    - asset_folder is the folder path (e.g. pdfs/class9/maths)
+    - URL format: /image/upload/<asset_folder>/<public_id>.pdf
+    """
     cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "dr3tph8sg")
-    return f"https://res.cloudinary.com/{cloud_name}/image/upload/{public_id}.pdf"
+    return f"https://res.cloudinary.com/{cloud_name}/image/upload/{asset_folder}/{public_id}.pdf"
 
 
 def fetch_from_asset_folder(folder_path):
-    """Fetch all assets from a Cloudinary asset folder (new ML folder mode)."""
+    """Fetch all assets from a Cloudinary asset folder."""
     resources = []
     try:
         next_cursor = None
@@ -55,29 +62,37 @@ def fetch_books(class_id, subject_id):
 
     if subfolders:
         for subfolder in subfolders:
-            for r in fetch_from_asset_folder(f"{base_folder}/{subfolder}"):
-                display_name = r.get('display_name', '') or r.get('public_id', '').split('/')[-1]
-                display_name = display_name.replace('_', ' ').replace('-', ' ').title()
+            folder_path = f"{base_folder}/{subfolder}"
+            for r in fetch_from_asset_folder(folder_path):
                 public_id = r.get('public_id', '')
+                asset_folder = r.get('asset_folder', folder_path)
+                display_name = r.get('display_name', public_id)
+                # Clean up display name (remove random suffix like _wkkxv4)
+                clean_name = '_'.join(display_name.split('_')[:-1]) if '_' in display_name else display_name
+                clean_name = clean_name.replace('_', ' ').replace('-', ' ').title()
                 books.append({
-                    'display_name': display_name,
-                    'filename': display_name,
+                    'display_name': clean_name,
                     'public_id': public_id,
+                    'asset_folder': asset_folder,
+                    'pdf_url': build_pdf_url(public_id, asset_folder),
                     'group': subfolder
                 })
     else:
         for r in fetch_from_asset_folder(base_folder):
-            display_name = r.get('display_name', '') or r.get('public_id', '').split('/')[-1]
-            display_name = display_name.replace('_', ' ').replace('-', ' ').title()
             public_id = r.get('public_id', '')
+            asset_folder = r.get('asset_folder', base_folder)
+            display_name = r.get('display_name', public_id)
+            clean_name = '_'.join(display_name.split('_')[:-1]) if '_' in display_name else display_name
+            clean_name = clean_name.replace('_', ' ').replace('-', ' ').title()
             books.append({
-                'display_name': display_name,
-                'filename': display_name,
+                'display_name': clean_name,
                 'public_id': public_id,
+                'asset_folder': asset_folder,
+                'pdf_url': build_pdf_url(public_id, asset_folder),
                 'group': None
             })
 
-    books.sort(key=lambda x: (x['group'] or '', x['filename']))
+    books.sort(key=lambda x: (x['group'] or '', x['display_name']))
     return books
 
 
@@ -106,23 +121,30 @@ def books(class_id, subject_id):
                            books=book_list)
 
 
-@app.route('/view/<class_id>/<subject_id>/<path:public_id_suffix>')
-def viewer(class_id, subject_id, public_id_suffix):
+@app.route('/view/<class_id>/<subject_id>/<path:encoded_id>')
+def viewer(class_id, subject_id, encoded_id):
     if class_id not in CLASSES or subject_id not in SUBJECTS:
         abort(404)
-    public_id = f"pdfs/{class_id}/{subject_id}/{public_id_suffix}"
-    filename = public_id_suffix.split('/')[-1]
-    group = public_id_suffix.split('/')[0] if '/' in public_id_suffix else None
-    display_name = filename.replace('_', ' ').replace('-', ' ').title()
-    cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "dr3tph8sg")
-    pdf_url = f"https://res.cloudinary.com/{cloud_name}/image/upload/{public_id}.pdf"
-    download_url = f"https://res.cloudinary.com/{cloud_name}/image/upload/fl_attachment/{public_id}.pdf"
 
-    return render_template('viewer.html', class_id=class_id,
-                           class_name=CLASS_MAP[class_id],
-                           subject_id=subject_id,
-                           subject_name=SUBJECT_MAP[subject_id],
-                           filename=filename,
+    # encoded_id format: group__public_id OR public_id (for flat)
+    if '__' in encoded_id:
+        group, public_id = encoded_id.split('__', 1)
+        asset_folder = f"pdfs/{class_id}/{subject_id}/{group}"
+    else:
+        group = None
+        public_id = encoded_id
+        asset_folder = f"pdfs/{class_id}/{subject_id}"
+
+    display_name = '_'.join(public_id.split('_')[:-1]) if '_' in public_id else public_id
+    display_name = display_name.replace('_', ' ').replace('-', ' ').title()
+
+    pdf_url = build_pdf_url(public_id, asset_folder)
+    cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "dr3tph8sg")
+    download_url = f"https://res.cloudinary.com/{cloud_name}/image/upload/fl_attachment/{asset_folder}/{public_id}.pdf"
+
+    return render_template('viewer.html',
+                           class_id=class_id, class_name=CLASS_MAP[class_id],
+                           subject_id=subject_id, subject_name=SUBJECT_MAP[subject_id],
                            display_name=display_name,
                            pdf_url=pdf_url,
                            download_url=download_url,
@@ -136,17 +158,18 @@ def debug():
     key = "SET" if os.environ.get("CLOUDINARY_API_KEY") else "NOT SET"
     secret = "SET" if os.environ.get("CLOUDINARY_API_SECRET") else "NOT SET"
     output.append(f"<b>Cloud:</b> {cloud} | <b>Key:</b> {key} | <b>Secret:</b> {secret}<br><br>")
-
-    # Test asset folder API
     try:
-        result = cloudinary.api.resources_by_asset_folder("pdfs/class9/maths", max_results=5)
+        result = cloudinary.api.resources_by_asset_folder("pdfs/class9/maths", max_results=3)
         found = result.get('resources', [])
         output.append(f"<b>pdfs/class9/maths:</b> {len(found)} items<br>")
         for r in found:
-            output.append(f"&nbsp;&nbsp;→ public_id={r.get('public_id')} | display_name={r.get('display_name')} | format={r.get('format')} | asset_folder={r.get('asset_folder')}<br>")
+            pid = r.get('public_id')
+            af = r.get('asset_folder')
+            url = build_pdf_url(pid, af)
+            output.append(f"&nbsp;&nbsp;→ {pid} | folder={af}<br>")
+            output.append(f"&nbsp;&nbsp;&nbsp;&nbsp;URL: <a href='{url}' target='_blank'>{url}</a><br>")
     except Exception as e:
-        output.append(f"<b>asset_folder error:</b> {e}<br>")
-
+        output.append(f"<b>Error:</b> {e}<br>")
     return "".join(output)
 
 
