@@ -162,3 +162,35 @@ def debug():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+
+@app.route('/debug2')
+def debug2():
+    output = []
+    cloud = os.environ.get("CLOUDINARY_CLOUD_NAME", "NOT SET")
+    output.append(f"<b>Cloud:</b> {cloud}<br><br>")
+
+    # Try listing folders
+    try:
+        folders = cloudinary.api.subfolders("pdfs")
+        output.append(f"<b>Subfolders of pdfs/:</b><br>")
+        for f in folders.get('folders', []):
+            output.append(f"&nbsp;&nbsp;→ {f['path']}<br>")
+    except Exception as e:
+        output.append(f"<b>Subfolders error:</b> {e}<br>")
+
+    output.append("<br>")
+
+    # Try resources by asset folder
+    try:
+        result = cloudinary.api.resources_by_asset_folder(
+            "pdfs/class9/maths", max_results=5
+        )
+        found = result.get('resources', [])
+        output.append(f"<b>resources_by_asset_folder pdfs/class9/maths:</b> {len(found)} items<br>")
+        for r in found:
+            output.append(f"&nbsp;&nbsp;→ {r.get('public_id')} | asset_folder={r.get('asset_folder')} | display_name={r.get('display_name')} | format={r.get('format')}<br>")
+    except Exception as e:
+        output.append(f"<b>resources_by_asset_folder error:</b> {e}<br>")
+
+    return "".join(output)
