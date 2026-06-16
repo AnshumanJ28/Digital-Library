@@ -12,7 +12,7 @@ SUBJECTS = ['maths', 'science', 'social']
 CLASS_MAP = {'class9': 'Class 9', 'class10': 'Class 10'}
 SUBJECT_MAP = {'maths': 'Mathematics', 'science': 'Science', 'social': 'Social Science'}
 
-# Folder IDs from Google Drive
+
 FOLDER_IDS = {
     'class9': {
         'maths':   '18ZdYAvUKuWVN2xUIBLrPXm8DVT-dZeYF',
