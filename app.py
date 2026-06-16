@@ -15,38 +15,35 @@ cloudinary.config(
 
 CLASSES = ['class9', 'class10']
 SUBJECTS = ['maths', 'science', 'social']
-
 CLASS_MAP = {'class9': 'Class 9', 'class10': 'Class 10'}
 SUBJECT_MAP = {'maths': 'Mathematics', 'science': 'Science', 'social': 'Social Science'}
-SOCIAL_SUBFOLDERS = {'class10': ['Economics', 'Geography', 'History', 'Political Science'], 'class9': []}
+SOCIAL_SUBFOLDERS = {
+    'class10': ['Economics', 'Geography', 'History', 'Political Science'],
+    'class9': []
+}
 
 
 def get_pdf_url(public_id):
-    """Get the PDF download URL using fl_attachment flag."""
     cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "dr3tph8sg")
-    # Use image resource type with page=1 removed, just get the original PDF
     return f"https://res.cloudinary.com/{cloud_name}/image/upload/{public_id}.pdf"
 
 
-def fetch_from_folder(folder_path):
-    """Fetch assets from a Cloudinary folder using Admin API."""
+def fetch_from_asset_folder(folder_path):
+    """Fetch all assets from a Cloudinary asset folder (new ML folder mode)."""
     resources = []
-    # Try image type (Cloudinary converts PDFs to images by default)
-    for resource_type in ["image", "raw"]:
-        try:
-            result = cloudinary.api.resources(
-                type="upload",
-                resource_type=resource_type,
-                prefix=folder_path + "/",
-                max_results=500
-            )
-            found = result.get('resources', [])
-            if found:
-                for r in found:
-                    r['_resource_type'] = resource_type
-                resources.extend(found)
-        except Exception as e:
-            print(f"Error [{resource_type}] {folder_path}: {e}")
+    try:
+        next_cursor = None
+        while True:
+            kwargs = {"max_results": 500}
+            if next_cursor:
+                kwargs["next_cursor"] = next_cursor
+            result = cloudinary.api.resources_by_asset_folder(folder_path, **kwargs)
+            resources.extend(result.get('resources', []))
+            next_cursor = result.get('next_cursor')
+            if not next_cursor:
+                break
+    except Exception as e:
+        print(f"Error fetching {folder_path}: {e}")
     return resources
 
 
@@ -58,29 +55,25 @@ def fetch_books(class_id, subject_id):
 
     if subfolders:
         for subfolder in subfolders:
-            for r in fetch_from_folder(f"{base_folder}/{subfolder}"):
-                public_id = r['public_id']
-                filename = public_id.split('/')[-1]
-                resource_type = r.get('_resource_type', 'image')
-                display_name = filename.replace('_', ' ').replace('-', ' ').title()
+            for r in fetch_from_asset_folder(f"{base_folder}/{subfolder}"):
+                display_name = r.get('display_name', '') or r.get('public_id', '').split('/')[-1]
+                display_name = display_name.replace('_', ' ').replace('-', ' ').title()
+                public_id = r.get('public_id', '')
                 books.append({
                     'display_name': display_name,
-                    'filename': filename,
+                    'filename': display_name,
                     'public_id': public_id,
-                    'resource_type': resource_type,
                     'group': subfolder
                 })
     else:
-        for r in fetch_from_folder(base_folder):
-            public_id = r['public_id']
-            filename = public_id.split('/')[-1]
-            resource_type = r.get('_resource_type', 'image')
-            display_name = filename.replace('_', ' ').replace('-', ' ').title()
+        for r in fetch_from_asset_folder(base_folder):
+            display_name = r.get('display_name', '') or r.get('public_id', '').split('/')[-1]
+            display_name = display_name.replace('_', ' ').replace('-', ' ').title()
+            public_id = r.get('public_id', '')
             books.append({
                 'display_name': display_name,
-                'filename': filename,
+                'filename': display_name,
                 'public_id': public_id,
-                'resource_type': resource_type,
                 'group': None
             })
 
@@ -122,9 +115,8 @@ def viewer(class_id, subject_id, public_id_suffix):
     group = public_id_suffix.split('/')[0] if '/' in public_id_suffix else None
     display_name = filename.replace('_', ' ').replace('-', ' ').title()
     cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "dr3tph8sg")
-    # Serve original PDF using fl_attachment workaround
-    pdf_url = f"https://res.cloudinary.com/{cloud_name}/image/upload/fl_attachment/{public_id}.pdf"
-    view_url = f"https://res.cloudinary.com/{cloud_name}/image/upload/{public_id}.pdf"
+    pdf_url = f"https://res.cloudinary.com/{cloud_name}/image/upload/{public_id}.pdf"
+    download_url = f"https://res.cloudinary.com/{cloud_name}/image/upload/fl_attachment/{public_id}.pdf"
 
     return render_template('viewer.html', class_id=class_id,
                            class_name=CLASS_MAP[class_id],
@@ -132,8 +124,8 @@ def viewer(class_id, subject_id, public_id_suffix):
                            subject_name=SUBJECT_MAP[subject_id],
                            filename=filename,
                            display_name=display_name,
-                           pdf_url=view_url,
-                           download_url=pdf_url,
+                           pdf_url=pdf_url,
+                           download_url=download_url,
                            group=group)
 
 
@@ -145,52 +137,18 @@ def debug():
     secret = "SET" if os.environ.get("CLOUDINARY_API_SECRET") else "NOT SET"
     output.append(f"<b>Cloud:</b> {cloud} | <b>Key:</b> {key} | <b>Secret:</b> {secret}<br><br>")
 
-    for rt in ["image", "raw"]:
-        try:
-            result = cloudinary.api.resources(
-                type="upload", resource_type=rt,
-                prefix="pdfs/", max_results=5
-            )
-            found = result.get('resources', [])
-            output.append(f"<b>{rt}:</b> {len(found)} items<br>")
-            for r in found:
-                output.append(f"&nbsp;&nbsp;→ {r['public_id']} | format={r.get('format')}<br>")
-        except Exception as e:
-            output.append(f"<b>{rt} ERROR:</b> {e}<br>")
+    # Test asset folder API
+    try:
+        result = cloudinary.api.resources_by_asset_folder("pdfs/class9/maths", max_results=5)
+        found = result.get('resources', [])
+        output.append(f"<b>pdfs/class9/maths:</b> {len(found)} items<br>")
+        for r in found:
+            output.append(f"&nbsp;&nbsp;→ public_id={r.get('public_id')} | display_name={r.get('display_name')} | format={r.get('format')} | asset_folder={r.get('asset_folder')}<br>")
+    except Exception as e:
+        output.append(f"<b>asset_folder error:</b> {e}<br>")
+
     return "".join(output)
 
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-
-
-@app.route('/debug2')
-def debug2():
-    output = []
-    cloud = os.environ.get("CLOUDINARY_CLOUD_NAME", "NOT SET")
-    output.append(f"<b>Cloud:</b> {cloud}<br><br>")
-
-    # Try listing folders
-    try:
-        folders = cloudinary.api.subfolders("pdfs")
-        output.append(f"<b>Subfolders of pdfs/:</b><br>")
-        for f in folders.get('folders', []):
-            output.append(f"&nbsp;&nbsp;→ {f['path']}<br>")
-    except Exception as e:
-        output.append(f"<b>Subfolders error:</b> {e}<br>")
-
-    output.append("<br>")
-
-    # Try resources by asset folder
-    try:
-        result = cloudinary.api.resources_by_asset_folder(
-            "pdfs/class9/maths", max_results=5
-        )
-        found = result.get('resources', [])
-        output.append(f"<b>resources_by_asset_folder pdfs/class9/maths:</b> {len(found)} items<br>")
-        for r in found:
-            output.append(f"&nbsp;&nbsp;→ {r.get('public_id')} | asset_folder={r.get('asset_folder')} | display_name={r.get('display_name')} | format={r.get('format')}<br>")
-    except Exception as e:
-        output.append(f"<b>resources_by_asset_folder error:</b> {e}<br>")
-
-    return "".join(output)
