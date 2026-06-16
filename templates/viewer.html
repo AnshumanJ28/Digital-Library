@@ -4,12 +4,12 @@
 
 {% block content %}
 <div class="mb-3 d-flex align-items-center justify-content-between">
-    <a href="{{ url_for('books', class_id=class_id, subject_id=subject_id) }}" class="btn-back btn-sm" aria-label="Back to Books">
+    <a href="{{ url_for('books', class_id=class_id, subject_id=subject_id) }}" class="btn-back btn-sm">
         <i class="bi bi-arrow-left me-1"></i>Back to Books
     </a>
     <div class="text-end">
-        <a href="{{ pdf_url }}" target="_blank" class="btn-outline-pill px-3 d-inline-flex align-items-center" style="min-height: 38px;">
-            <i class="bi bi-box-arrow-up-right me-1"></i>Open Full
+        <a href="{{ download_url }}" target="_blank" class="btn-outline-pill px-3 d-inline-flex align-items-center" style="min-height: 38px;">
+            <i class="bi bi-download me-1"></i>Download
         </a>
     </div>
 </div>
