@@ -1,14 +1,12 @@
 {% extends "base.html" %}
-
 {% block title %}{{ class_name }} {{ subject_name }} - Books{% endblock %}
-
 {% block content %}
 <div class="mb-3">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
             <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Home</a></li>
             <li class="breadcrumb-item"><a href="{{ url_for('subjects', class_id=class_id) }}">{{ class_name }}</a></li>
-            <li class="breadcrumb-item active" aria-current="page">{{ subject_name }}</li>
+            <li class="breadcrumb-item active">{{ subject_name }}</li>
         </ol>
     </nav>
 </div>
@@ -42,7 +40,6 @@
                         {% if seen_groups.append(book.group) %}{% endif %}
                     {% endif %}
                 {% endfor %}
-
                 <div id="booksGrid">
                 {% for group in seen_groups %}
                     {% set group_books = books | selectattr('group', 'equalto', group) | list %}
@@ -52,15 +49,14 @@
                         </h2>
                         <div class="d-flex flex-column gap-3">
                         {% for book in group_books %}
-                        <div class="card-library book-card-col" data-title="{{ book.filename }}">
+                        <div class="card-library book-card-col" data-title="{{ book.display_name }}">
                             <div class="d-flex flex-column">
                                 <div class="d-flex align-items-start justify-content-between mb-3">
                                     <span class="badge-subject badge-{{ subject_id }}">{{ group }}</span>
                                     <i class="bi bi-file-earmark-pdf text-muted fs-4"></i>
                                 </div>
                                 <h2 class="h5 mb-1 text-dark">{{ book.display_name }}</h2>
-                                <p class="text-muted small mb-3">{{ book.filename }}</p>
-                                <a href="{{ url_for('viewer', class_id=class_id, subject_id=subject_id, public_id_suffix=group + '/' + book.filename) }}" class="btn-primary-pill text-center w-100">
+                                <a href="{{ url_for('viewer', class_id=class_id, subject_id=subject_id, encoded_id=group + '__' + book.public_id) }}" class="btn-primary-pill text-center w-100 mt-2">
                                     <i class="bi bi-book me-2"></i>Read Book
                                 </a>
                             </div>
@@ -73,7 +69,7 @@
             {% else %}
                 <div class="d-flex flex-column gap-3" id="booksGrid">
                     {% for book in books %}
-                    <div class="card-library book-card-col" data-title="{{ book.filename }}">
+                    <div class="card-library book-card-col" data-title="{{ book.display_name }}">
                         <div class="d-flex flex-column">
                             <div class="d-flex align-items-start justify-content-between mb-3">
                                 <span class="badge-subject badge-{{ subject_id }}">
@@ -82,8 +78,7 @@
                                 <i class="bi bi-file-earmark-pdf text-muted fs-4"></i>
                             </div>
                             <h2 class="h5 mb-1 text-dark">{{ book.display_name }}</h2>
-                            <p class="text-muted small mb-3">{{ book.filename }}</p>
-                            <a href="{{ url_for('viewer', class_id=class_id, subject_id=subject_id, public_id_suffix=book.filename) }}" class="btn-primary-pill text-center w-100">
+                            <a href="{{ url_for('viewer', class_id=class_id, subject_id=subject_id, encoded_id=book.public_id) }}" class="btn-primary-pill text-center w-100 mt-2">
                                 <i class="bi bi-book me-2"></i>Read Book
                             </a>
                         </div>
@@ -104,18 +99,17 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchBar = document.getElementById('searchBar');
-        if (searchBar) {
-            searchBar.addEventListener('input', function(e) {
-                const query = e.target.value.toLowerCase().trim();
-                document.querySelectorAll('.book-card-col').forEach(card => {
-                    const title = card.getAttribute('data-title').toLowerCase();
-                    const cleanTitle = card.querySelector('h2').textContent.toLowerCase();
-                    card.style.setProperty('display', (title.includes(query) || cleanTitle.includes(query)) ? 'block' : 'none', 'important');
-                });
+document.addEventListener('DOMContentLoaded', function() {
+    const searchBar = document.getElementById('searchBar');
+    if (searchBar) {
+        searchBar.addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase().trim();
+            document.querySelectorAll('.book-card-col').forEach(card => {
+                const title = card.getAttribute('data-title').toLowerCase();
+                card.style.setProperty('display', title.includes(query) ? 'block' : 'none', 'important');
             });
-        }
-    });
+        });
+    }
+});
 </script>
 {% endblock %}
