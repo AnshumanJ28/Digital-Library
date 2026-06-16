@@ -5,14 +5,14 @@ from functools import lru_cache
 
 app = Flask(__name__)
 
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "AIzaSyD88vUvjtLnF5kBpzqaiOclMExx2YRrKE8")
 
 CLASSES = ['class9', 'class10']
 SUBJECTS = ['maths', 'science', 'social']
 CLASS_MAP = {'class9': 'Class 9', 'class10': 'Class 10'}
 SUBJECT_MAP = {'maths': 'Mathematics', 'science': 'Science', 'social': 'Social Science'}
 
-
+# Folder IDs from Google Drive
 FOLDER_IDS = {
     'class9': {
         'maths':   '18ZdYAvUKuWVN2xUIBLrPXm8DVT-dZeYF',
