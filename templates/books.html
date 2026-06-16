@@ -10,7 +10,6 @@
         </ol>
     </nav>
 </div>
-
 <div class="row align-items-center mb-4">
     <div class="col-12 col-md-7 mb-3 mb-md-0">
         <h1 class="h2 mb-1">{{ subject_name }} Textbooks</h1>
@@ -25,14 +24,11 @@
     </div>
     {% endif %}
 </div>
-
 <div class="divider"></div>
-
 <div class="row justify-content-center">
     <div class="col-12 col-md-8 col-lg-6">
         {% if books %}
             {% set has_groups = books | selectattr('group') | list | length > 0 %}
-
             {% if has_groups %}
                 {% set seen_groups = [] %}
                 {% for book in books %}
@@ -56,7 +52,7 @@
                                     <i class="bi bi-file-earmark-pdf text-muted fs-4"></i>
                                 </div>
                                 <h2 class="h5 mb-1 text-dark">{{ book.display_name }}</h2>
-                                <a href="{{ url_for('viewer', class_id=class_id, subject_id=subject_id, encoded_id=group + '__' + book.public_id) }}" class="btn-primary-pill text-center w-100 mt-2">
+                                <a href="{{ url_for('viewer', class_id=class_id, subject_id=subject_id, file_id=book.file_id) }}" class="btn-primary-pill text-center w-100 mt-2">
                                     <i class="bi bi-book me-2"></i>Read Book
                                 </a>
                             </div>
@@ -78,7 +74,7 @@
                                 <i class="bi bi-file-earmark-pdf text-muted fs-4"></i>
                             </div>
                             <h2 class="h5 mb-1 text-dark">{{ book.display_name }}</h2>
-                            <a href="{{ url_for('viewer', class_id=class_id, subject_id=subject_id, encoded_id=book.public_id) }}" class="btn-primary-pill text-center w-100 mt-2">
+                            <a href="{{ url_for('viewer', class_id=class_id, subject_id=subject_id, file_id=book.file_id) }}" class="btn-primary-pill text-center w-100 mt-2">
                                 <i class="bi bi-book me-2"></i>Read Book
                             </a>
                         </div>
@@ -90,13 +86,12 @@
             <div class="card-library text-center p-5">
                 <div class="mb-3 fs-1 text-muted"><i class="bi bi-folder-x"></i></div>
                 <h3 class="h5 mb-2">No Books Found</h3>
-                <p class="text-muted small mb-0">No PDFs found in Cloudinary for this subject.</p>
+                <p class="text-muted small mb-0">No PDFs found for this subject.</p>
             </div>
         {% endif %}
     </div>
 </div>
 {% endblock %}
-
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
