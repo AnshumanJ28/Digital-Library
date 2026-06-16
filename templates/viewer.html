@@ -18,19 +18,21 @@
 </div>
 
 <div class="viewer-wrapper">
-    <div class="position-relative w-100 rounded overflow-hidden" style="height: 82vh; min-height: 500px; background-color: #E5E7EB;">
+    <div class="position-relative w-100 rounded overflow-hidden" style="height: 82vh; min-height: 500px;">
         <iframe
-            src="https://docs.google.com/viewer?url={{ pdf_url | urlencode }}&embedded=true"
+            src="{{ pdf_url }}"
             class="w-100 h-100 border-0"
-            title="PDF Viewer"
-            allow="fullscreen"
+            title="{{ display_name }}"
+            allow="autoplay; fullscreen"
+            allowfullscreen
         ></iframe>
     </div>
 </div>
 
 <div class="text-center mt-3">
-    <p class="text-muted small">If the viewer doesn't load, 
-        <a href="{{ pdf_url }}" target="_blank">open the PDF directly</a>.
+    <p class="text-muted small">
+        If the viewer doesn't load, 
+        <a href="{{ download_url }}" target="_blank">download the PDF</a> instead.
     </p>
 </div>
 {% endblock %}
