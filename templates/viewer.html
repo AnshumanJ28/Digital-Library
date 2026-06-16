@@ -1,7 +1,5 @@
 {% extends "base.html" %}
-
 {% block title %}{{ display_name }} - Viewer{% endblock %}
-
 {% block content %}
 <div class="mb-3 d-flex align-items-center justify-content-between">
     <a href="{{ url_for('books', class_id=class_id, subject_id=subject_id) }}" class="btn-back btn-sm">
@@ -20,19 +18,19 @@
 </div>
 
 <div class="viewer-wrapper">
-    <div class="position-relative w-100 rounded overflow-hidden" style="height: 78vh; min-height: 500px; background-color: #E5E7EB;">
+    <div class="position-relative w-100 rounded overflow-hidden" style="height: 82vh; min-height: 500px; background-color: #E5E7EB;">
         <iframe
-            src="{{ pdf_url }}#toolbar=1"
+            src="https://docs.google.com/viewer?url={{ pdf_url | urlencode }}&embedded=true"
             class="w-100 h-100 border-0"
             title="PDF Viewer"
             allow="fullscreen"
-        >
-            <div class="p-5 text-center text-dark">
-                <i class="bi bi-exclamation-circle text-muted fs-1 mb-3"></i>
-                <h3>Cannot Display PDF Inline</h3>
-                <a href="{{ pdf_url }}" class="btn-primary-pill mt-3">Open PDF Directly</a>
-            </div>
-        </iframe>
+        ></iframe>
     </div>
+</div>
+
+<div class="text-center mt-3">
+    <p class="text-muted small">If the viewer doesn't load, 
+        <a href="{{ pdf_url }}" target="_blank">open the PDF directly</a>.
+    </p>
 </div>
 {% endblock %}
